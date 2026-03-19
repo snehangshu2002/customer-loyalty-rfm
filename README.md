@@ -1,61 +1,37 @@
 # RFM Customer Loyalty Analysis
  
-A comprehensive RFM (Recency, Frequency, Monetary) analysis project for customer segmentation and loyalty scoring using Python.
+RFM (Recency, Frequency, Monetary) analysis on Superstore transaction data. Segments customers by purchase behaviour and assigns loyalty badges.
  
-## Overview
+## What it does
  
-This project analyzes customer transaction data to segment customers based on their purchasing behavior. RFM analysis helps identify:
-- **Recency (R)**: How recently a customer made a purchase
-- **Frequency (F)**: How often a customer makes purchases
-- **Monetary (M)**: How much money a customer spends
+Each customer gets scored 1–4 on three dimensions:
+ 
+- **Recency** — days since their last order (lower = better score)
+- **Frequency** — number of orders placed (higher = better score)
+- **Monetary** — total spend (higher = better score)
+ 
+The three ranks are summed into a loyalty score (3–12), then split into four tiers via `pd.qcut`:
+ 
+| Badge | Score range | Who they are |
+|-------|-------------|--------------|
+| Platinum | 3–5 | Highest-value, most active customers |
+| Gold | 6–7 | Loyal, regular buyers |
+| Silver | 8–9 | Occasional customers |
+| Bronze | 10–12 | Lapsed or low-value — candidates for win-back |
  
 ## Dataset
  
-The analysis is based on the **Superstore** dataset containing 9,994 transaction rows across 29 columns including Order ID, Order Date, Customer ID, Sales, Quantity, Discount, Profit, and various categorical fields.
+Superstore sales data — 9,994 rows, 29 columns. Only four columns are used for RFM: `Customer ID`, `Order ID`, `Order Date`, `Sales`.
  
-## Methodology
+Two duplicate rows were dropped. The analytical reference date is `2017-12-31` (last purchase date + 1 day).
  
-### Data Preparation
+## Quantile thresholds
  
-1. Select columns needed for RFM: `Customer ID`, `Order ID`, `Order Date`, `Sales`
-2. Convert `OrderDate` to datetime
-3. Remove 2 duplicate rows
-4. Set the **analytical date** = last purchase date + 1 day (`2017-12-31`)
- 
-### RFM Scoring
- 
-Customers are scored on a 1–4 scale using quartile-based ranking:
- 
-| Metric | Description | Scoring Logic |
-|--------|-------------|---------------|
-| **Recency** | Days since last purchase | Lower days = Rank 1 (most recent); higher = Rank 4 (inactive) |
-| **Frequency** | Count of orders | Higher = Rank 1; lower = Rank 4 |
-| **Monetary** | Total spend | Higher = Rank 1; lower = Rank 4 |
- 
-**Quantile thresholds (Q1 / Q2 / Q3):**
 | Metric | Q1 | Q2 | Q3 |
 |--------|----|----|----|
 | Recency | 31 days | 76 days | 184 days |
 | Frequency | 8 orders | 12 orders | 16 orders |
 | Monetary | $1,146 | $2,256 | $3,785 |
- 
-### Loyalty Score Calculation
- 
-```
-LoyaltyScore = R_Rank + F_Rank + M_Rank
-Range: 3 (best) → 12 (worst)
-```
- 
-### Loyalty Badge Tiers
- 
-Badges are assigned via `pd.qcut` on the combined loyalty score:
- 
-| Badge | Description |
-|-------|-------------|
-| **Platinum** | Lowest scores — most valuable customers |
-| **Gold** | Low-medium scores — loyal customers |
-| **Silver** | Medium scores — regular customers |
-| **Bronze** | High scores — at-risk customers |
  
 
 ## Project Structure
@@ -71,7 +47,6 @@ Badges are assigned via `pd.qcut` on the combined loyalty score:
 │   ├── 01_data_preparation.ipynb   # Data cleaning notebook
 │   └── rfm_analysis.ipynb          # Main RFM analysis notebook
 ├── .gitignore                      # Git ignore rules
-├── CLAUDE.md                       # Claude Code configuration
 ├── LICENSE                         # Project license
 ├── pyproject.toml                  # Python dependencies (uv)
 ├── README.md                       # This file
@@ -80,98 +55,87 @@ Badges are assigned via `pd.qcut` on the combined loyalty score:
 
 ## Installation
  
-This project uses `uv` for Python dependency management:
+Uses `uv` for dependency management:
  
 ```bash
-# Install dependencies
 uv sync
  
-# Activate virtual environment (Windows)
+# Windows
 .venv\Scripts\activate
  
-# Activate virtual environment (Unix/Mac)
+# Unix/Mac
 source .venv/bin/activate
 ```
  
 ## Usage
-
-### Jupyter Notebooks
-
-Run the notebooks in order:
-
+ 
 ```bash
-# 1. Data preparation and cleaning
-jupyter notebook notebooks/01_data_preparation.ipynb
-
-# 2. Main RFM analysis and segmentation
+# Notebook
 jupyter notebook notebooks/rfm_analysis.ipynb
+ 
 ```
  
-## Key Insights from Analysis
+## Results
  
-### Customer Distribution
+### Customer distribution
  
-| Badge | Count | Share |
-|-------|-------|-------|
-| **Gold** | ~289 | ~37% |
-| **Platinum** | ~128 | ~16% |
-| **Silver** | ~94 | ~12% |
-| **Bronze** | ~122 | ~16% |
+| Badge | Count |
+|-------|-------|
+| Gold | ~289 |
+| Bronze | ~122 |
+| Platinum | ~128 |
+| Silver | ~94 |
  
-- Over **60% of customers** fall in Gold or Platinum — healthy loyalty base
-- **Gold is the dominant segment** (~289 customers) — strong opportunity to convert to Platinum
-- **Bronze customers (122)** are the priority for win-back campaigns
+Gold is the largest group. The notebook flags ~289 Gold customers as upgrade candidates if recency improves. Bronze (122 customers) is the win-back target.
  
-### Recency / Frequency / Monetary Distributions
+### Distribution patterns
  
-| Metric | Pattern |
-|--------|---------|
-| **Recency** | Most customers purchased recently (0–100 days), with a long tail to ~1,200 days |
-| **Frequency** | Bell-shaped distribution peaking around 10–15 orders |
-| **Monetary** | Heavily right-skewed; majority spend $0–$2,500; a few high-value customers up to $25,000 |
+- **Recency**: Most customers bought within the last 100 days. A long tail extends to ~1,200 days.
+- **Frequency**: Bell-shaped, peaks around 10–15 orders.
+- **Monetary**: Right-skewed. Most customers spend under $2,500; a few reach $25K.
  
-### Monetary Value by Badge
+### Monetary by badge
  
-- Gold tier contains the **highest single spender (~$25K)** — review for Platinum upgrade
-- Bronze customers are **consistently low spenders** with little variation
-- Outliers in Platinum suggest **VIP customers** worth special attention
+The highest single spender (~$25K) sits in Gold, not Platinum — worth reviewing for a tier upgrade. Bronze spend is tightly clustered at the low end with few outliers.
  
-### Correlation Findings
+### Correlations
  
-| Finding | Correlation | Action |
-|---------|-------------|--------|
-| Frequent buyers spend more | **0.54** | Target frequent buyers for upsell |
-| Recency barely affects spend | **-0.14** | Don't ignore lapsed high-spenders |
-| Recent = slightly more frequent | **-0.29** | Re-engage lapsed customers to boost frequency |
- 
-## Data Requirements
- 
-Input CSV should contain:
-- `Customer ID` / `CustomerID`: Unique customer identifier
-- `Order ID` / `OrderID`: Transaction identifier
-- `Order Date` / `OrderDate`: Transaction date
-- `Sales`: Transaction amount
+| Finding | r | So what |
+|---------|---|---------|
+| Frequency → Monetary | 0.54 | Frequent buyers spend more — good upsell targets |
+| Recency → Monetary | -0.14 | Lapsed customers aren't necessarily low-value |
+| Recency → Frequency | -0.29 | Re-engaging lapsed customers tends to lift order count |
  
 ## Outputs
  
-The analysis generates:
-- `data/RFM analysis output data/segmented_data.csv` — Customer-level RFM scores and loyalty badges
-- Distribution charts (Recency, Frequency, Monetary)
-- Loyalty badge count bar chart
-- Monetary value boxplot by badge
-- Recency vs. Monetary scatter plot coloured by badge
-- Correlation heatmap (R / F / M)
-- Treemap of customer segments by badge
+- `segmented_data.csv` — one row per customer with RFM scores and badge
+- Distribution histograms (Recency, Frequency, Monetary)
+- Badge count bar chart
+- Monetary boxplot by badge
+- Recency vs. Monetary scatter plot
+- Correlation heatmap
+- Treemap of badge distribution
  
-## Technologies Used
+## Input format
  
-- **Python 3.x**
-- **pandas** — Data manipulation
-- **numpy** — Numerical operations
-- **matplotlib** & **seaborn** — Visualization
-- **squarify** — Treemap visualization
-- **jupyter** — Interactive analysis
+Any CSV with these columns (exact names or the variants shown):
+ 
+| Column | Variants accepted |
+|--------|------------------|
+| Customer ID | `CustomerID` |
+| Order ID | `OrderID` |
+| Order Date | `OrderDate` |
+| Sales | — |
+ 
+## Dependencies
+ 
+- `pandas` — data wrangling
+- `numpy` — numerical ops
+- `matplotlib`, `seaborn` — charts
+- `squarify` — treemap
+- `jupyter` — notebook
  
 ## License
  
-This project is for educational and analytical purposes.
+Educational use.
+ 
